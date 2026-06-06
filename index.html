@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a1a1a" />
+  <title>Meal Prep</title>
+  <style>
+    :root {
+      /* ROYGBIV */
+      --mon: #e53935; /* Red */
+      --tue: #fb8c00; /* Orange */
+      --wed: #fdd835; /* Yellow */
+      --thu: #43a047; /* Green */
+      --fri: #1e88e5; /* Blue */
+      --sat: #3949ab; /* Indigo */
+      --sun: #8e24aa; /* Violet */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #121212;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ===== Top nav: 7 equal parts ===== */
+    .day-nav {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      width: 100%;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .day-nav span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #000;
+      padding: 1rem 0;
+      user-select: none;
+    }
+
+    .day-nav span[data-day="mon"] { background: var(--mon); }
+    .day-nav span[data-day="tue"] { background: var(--tue); }
+    .day-nav span[data-day="wed"] { background: var(--wed); }
+    .day-nav span[data-day="thu"] { background: var(--thu); }
+    .day-nav span[data-day="fri"] { background: var(--fri); }
+    .day-nav span[data-day="sat"] { background: var(--sat); }
+    .day-nav span[data-day="sun"] { background: var(--sun); }
+
+    /* ===== Tab bar ===== */
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      border-bottom: 2px solid #2a2a2a;
+    }
+
+    .tab {
+      border: none;
+      background: #1e1e1e;
+      color: #888;
+      font-family: inherit;
+      text-align: center;
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      padding: 0.9rem 0;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .tab:active {
+      background: #2a2a2a;
+    }
+
+    .tab.active {
+      color: #fff;
+      border-bottom-color: #fff;
+    }
+
+    /* ===== Tab panels ===== */
+    .panel {
+      display: none;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    /* ===== Content area ===== */
+    .content {
+      flex: 1;
+      padding: 1rem;
+    }
+
+    /* ===== Calendar (Eating page) ===== */
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      background: #fff;       /* shows through gaps as white grid lines */
+      border: 2px solid #fff;
+    }
+
+    .cal-cell {
+      min-height: 100px;
+      background: #1e1e1e;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cal-date {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .cal-cell.today .cal-date {
+      color: #fdd835;
+    }
+
+    .bullets {
+      list-style: disc;
+      padding-left: 1.1em;
+      margin: 0;
+    }
+
+    .bullets li {
+      min-height: 1.2em;
+      line-height: 1;
+      font-size: 0.75rem;
+      color: #e0e0e0;
+    }
+
+    /* ===== Day section (Cooking page) ===== */
+    .cooking-days {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 16px;   /* row-gap  column-gap */
+      grid-auto-rows: minmax(460px, auto);   /* reserve room for ~10 boxes per row */
+      align-items: start;
+    }
+
+    .day-section {
+      margin-bottom: 0;
+    }
+
+    /* Sunday spans the full width and is centered below Fri/Sat */
+    .day-section.sunday {
+      grid-column: 1 / -1;
+      text-align: center;
+    }
+
+    .day-section.sunday .food-item {
+      max-width: 260px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .day-heading {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      margin-bottom: 8px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 999px;   /* rounded pill */
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: #fff;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .food-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .food-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      margin-bottom: 6px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      color: #e0e0e0;
+      cursor: pointer;
+      user-select: none;
+      max-width: 160px;
+      transition: background 0.15s ease, transform 0.08s ease;
+    }
+
+    .food-item:active {
+      transform: scale(0.98);
+      background: #2a2a2a;
+    }
+
+    .food-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #22c55e;   /* green by default */
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .day-heading.done .food-dot {
+      background: #ef4444;   /* red once tapped */
+    }
+
+    /* Dot colored by day (ROYGBIV) for popup-added bars */
+    .food-item[data-day="mon"] .food-dot { background: var(--mon); }
+    .food-item[data-day="tue"] .food-dot { background: var(--tue); }
+    .food-item[data-day="wed"] .food-dot { background: var(--wed); }
+    .food-item[data-day="thu"] .food-dot { background: var(--thu); }
+    .food-item[data-day="fri"] .food-dot { background: var(--fri); }
+    .food-item[data-day="sat"] .food-dot { background: var(--sat); }
+    .food-item[data-day="sun"] .food-dot { background: var(--sun); }
+
+    .food-name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .food-del {
+      flex-shrink: 0;
+      background: transparent;
+      border: none;
+      color: #888;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 0 2px;
+      cursor: pointer;
+    }
+
+    .food-del:active { color: #ef4444; }
+
+    .add-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      max-width: 160px;
+      padding: 7px;
+      background: transparent;
+      border: 1px dashed #444;
+      border-radius: 10px;
+      color: #888;
+      font-family: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .add-item:active { background: #1e1e1e; }
+
+    .day-section.sunday .add-item {
+      max-width: 260px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Food picker popup shown when "+ Add" is tapped */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      position: relative;
+      max-width: 90vw;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      gap: 16px;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 6px;
+      right: 10px;
+      background: transparent;
+      border: none;
+      color: #888;
+      font-size: 1.5rem;
+      line-height: 1;
+      padding: 2px 6px;
+      cursor: pointer;
+    }
+
+    .modal-close:active { color: #fff; }
+
+    .modal-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 130px;
+    }
+
+    .modal-title {
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .add-option {
+      text-align: center;
+      padding: 12px;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 10px;
+      color: #e0e0e0;
+      font-family: inherit;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .add-option:active { background: #353535; }
+
+    .add-option.selected {
+      outline: 3px solid #fff;
+      outline-offset: -3px;
+    }
+
+    .date-option {
+      padding: 12px;
+      border: none;
+      border-radius: 999px;   /* pill */
+      color: #000;            /* black text */
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .date-option[data-day="mon"] { background: var(--mon); }
+    .date-option[data-day="tue"] { background: var(--tue); }
+    .date-option[data-day="wed"] { background: var(--wed); }
+    .date-option[data-day="thu"] { background: var(--thu); }
+    .date-option[data-day="fri"] { background: var(--fri); }
+    .date-option[data-day="sat"] { background: var(--sat); }
+    .date-option[data-day="sun"] { background: var(--sun); }
+
+    .date-option.selected {
+      outline: 3px solid #fff;
+      outline-offset: -3px;
+    }
+
+    /* Date column is locked until a food is chosen */
+    .modal-col.locked .date-option {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <nav class="day-nav" aria-label="Days of the week">
+    <span data-day="mon" aria-label="Monday">M</span>
+    <span data-day="tue" aria-label="Tuesday">T</span>
+    <span data-day="wed" aria-label="Wednesday">W</span>
+    <span data-day="thu" aria-label="Thursday">T</span>
+    <span data-day="fri" aria-label="Friday">F</span>
+    <span data-day="sat" aria-label="Saturday">S</span>
+    <span data-day="sun" aria-label="Sunday">S</span>
+  </nav>
+
+  <div class="tabs">
+    <button type="button" class="tab" data-tab="cooking">Cooking</button>
+    <button type="button" class="tab active" data-tab="eating">Eating</button>
+  </div>
+
+  <main class="content">
+    <section class="panel" id="cooking" aria-label="Cooking">
+      <div class="cooking-days">
+        <div class="day-section">
+          <div class="day-heading">Friday June 5th</div>
+          <ul class="food-list"></ul>
+        </div>
+
+        <div class="day-section">
+          <div class="day-heading">Saturday June 6th</div>
+          <ul class="food-list"></ul>
+        </div>
+
+        <div class="day-section">
+          <div class="day-heading">Sunday June 7th</div>
+          <ul class="food-list"></ul>
+        </div>
+
+        <div class="day-section">
+          <div class="day-heading">Monday June 8th</div>
+          <ul class="food-list"></ul>
+        </div>
+
+        <div class="day-section">
+          <div class="day-heading">Tuesday June 9th</div>
+          <ul class="food-list"></ul>
+        </div>
+
+        <div class="day-section">
+          <div class="day-heading">Wednesday June 10th</div>
+          <ul class="food-list"></ul>
+        </div>
+
+        <div class="day-section">
+          <div class="day-heading">Thursday June 11th</div>
+          <ul class="food-list"></ul>
+        </div>
+
+        <div class="day-section">
+          <div class="day-heading">Friday June 12th</div>
+          <ul class="food-list"></ul>
+        </div>
+
+        <div class="day-section">
+          <div class="day-heading">Saturday June 13th</div>
+          <ul class="food-list"></ul>
+        </div>
+
+        <div class="day-section">
+          <div class="day-heading">Sunday June 14th</div>
+          <ul class="food-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel active" id="eating" aria-label="Eating">
+    <div class="calendar" aria-label="June 2026">
+      <div class="cal-cell today">
+        <div class="cal-date">Fri 5</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Sat 6</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Sun 7</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Mon 8</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Tue 9</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Wed 10</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Thu 11</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Fri 12</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Sat 13</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Sun 14</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Mon 15</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Tue 16</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Wed 17</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Thu 18</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Fri 19</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Sat 20</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Sun 21</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Mon 22</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Tue 23</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Wed 24</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Thu 25</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Fri 26</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Sat 27</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Sun 28</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Mon 29</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+      <div class="cal-cell">
+        <div class="cal-date">Tue 30</div>
+        <ul class="bullets"><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li><li>Steak</li></ul>
+      </div>
+    </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="foodModal">
+    <div class="modal">
+      <button type="button" class="modal-close" id="modalClose" aria-label="Close">×</button>
+      <div class="modal-col" id="foodCol">
+        <div class="modal-title">Add food</div>
+      </div>
+      <div class="modal-col" id="dateCol">
+        <div class="modal-title">Pick date</div>
+        <button type="button" class="date-option" data-day="mon">Monday</button>
+        <button type="button" class="date-option" data-day="tue">Tuesday</button>
+        <button type="button" class="date-option" data-day="wed">Wednesday</button>
+        <button type="button" class="date-option" data-day="thu">Thursday</button>
+        <button type="button" class="date-option" data-day="fri">Friday</button>
+        <button type="button" class="date-option" data-day="sat">Saturday</button>
+        <button type="button" class="date-option" data-day="sun">Sunday</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tabs = document.querySelectorAll('.tab');
+    const panels = document.querySelectorAll('.panel');
+    const TAB_KEY = 'meal-prep-active-tab';
+
+    function activateTab(name) {
+      tabs.forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+      panels.forEach((p) => p.classList.toggle('active', p.id === name));
+      localStorage.setItem(TAB_KEY, name);
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+    });
+
+    // Restore whichever tab you were on last (defaults to eating)
+    const saved = localStorage.getItem(TAB_KEY);
+    activateTab(document.getElementById(saved) ? saved : 'eating');
+
+    // ===== Cooking page: add / remove food bars (max 6 per day) =====
+    const MAX_ITEMS = 10;
+    const FOODS = ['Chicken', 'Steak', 'Salmon', 'Eggs', 'Rice', 'Potato', 'Broccoli'];
+    const cooking = document.getElementById('cooking');
+
+    function makeBar(name, dayKey) {
+      const li = document.createElement('li');
+      li.className = 'food-item';
+      if (dayKey) li.dataset.day = dayKey;
+      li.innerHTML =
+        '<span class="food-dot"></span>' +
+        '<span class="food-name"></span>' +
+        '<button type="button" class="food-del" aria-label="Remove">×</button>';
+      li.querySelector('.food-name').textContent = name;
+      return li;
+    }
+
+    const DAY_KEYS = {
+      Monday: 'mon', Tuesday: 'tue', Wednesday: 'wed', Thursday: 'thu',
+      Friday: 'fri', Saturday: 'sat', Sunday: 'sun'
+    };
+
+    function dayKeyOf(sec) {
+      const word = sec.querySelector('.day-heading').textContent.trim().split(/\s+/)[0];
+      return DAY_KEYS[word] || null;
+    }
+
+    // Give every existing bar a name span + delete button (+ its day color)
+    cooking.querySelectorAll('.food-item').forEach((li) => {
+      const key = dayKeyOf(li.closest('.day-section'));
+      if (key) li.dataset.day = key;
+      const name = li.textContent.trim();
+      const dot = li.querySelector('.food-dot');
+      li.textContent = '';
+      li.appendChild(dot);
+      const nameEl = document.createElement('span');
+      nameEl.className = 'food-name';
+      nameEl.textContent = name;
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'food-del';
+      del.setAttribute('aria-label', 'Remove');
+      del.textContent = '×';
+      li.appendChild(nameEl);
+      li.appendChild(del);
+    });
+
+    // Give every date pill its own green/red dot
+    cooking.querySelectorAll('.day-heading').forEach((h) => {
+      const dot = document.createElement('span');
+      dot.className = 'food-dot';
+      h.insertBefore(dot, h.firstChild);
+    });
+
+    // Add an "+ Add" button to every day
+    cooking.querySelectorAll('.day-section').forEach((sec) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'add-item';
+      btn.textContent = '+ Add';
+      sec.querySelector('.food-list').after(btn);
+    });
+
+    function refreshAddButtons() {
+      cooking.querySelectorAll('.day-section').forEach((sec) => {
+        const count = sec.querySelectorAll('.food-item').length;
+        const btn = sec.querySelector('.add-item');
+        if (btn) btn.style.display = count >= MAX_ITEMS ? 'none' : '';
+      });
+    }
+
+    // ----- Persistence (saved meals survive refresh) -----
+    const STORE_KEY = 'meal-prep-cooking-v1';
+
+    function dayId(sec) {
+      return sec.querySelector('.day-heading').textContent.trim();
+    }
+
+    function saveCooking() {
+      const data = {};
+      cooking.querySelectorAll('.day-section').forEach((sec) => {
+        data[dayId(sec)] = Array.from(sec.querySelectorAll('.food-item')).map((li) => ({
+          name: li.querySelector('.food-name').textContent,
+          day: li.dataset.day || null
+        }));
+      });
+      localStorage.setItem(STORE_KEY, JSON.stringify(data));
+    }
+
+    function loadCooking() {
+      let data;
+      try { data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) {}
+      if (!data) return;
+      cooking.querySelectorAll('.day-section').forEach((sec) => {
+        const items = data[dayId(sec)];
+        if (!Array.isArray(items)) return;
+        const list = sec.querySelector('.food-list');
+        list.innerHTML = '';
+        items.slice(0, MAX_ITEMS).forEach((it) => list.appendChild(makeBar(it.name, it.day)));
+      });
+    }
+
+    loadCooking();
+    refreshAddButtons();
+
+    // ----- Food + date picker popup -----
+    const modal = document.getElementById('foodModal');
+    const foodCol = document.getElementById('foodCol');
+    const dateCol = document.getElementById('dateCol');
+
+    let selectedFood = null;
+    let selectedDay = null;   // only picks the dot color
+    let pendingSection = null;   // the day whose "+ Add" was tapped
+
+    // Build the food option buttons once
+    FOODS.forEach((food) => {
+      const opt = document.createElement('button');
+      opt.type = 'button';
+      opt.className = 'add-option';
+      opt.textContent = food;
+      foodCol.appendChild(opt);
+    });
+
+    function clearSelection() {
+      selectedFood = null;
+      selectedDay = null;
+      modal.querySelectorAll('.selected').forEach((b) => b.classList.remove('selected'));
+    }
+
+    function openModal(sec) {
+      clearSelection();
+      pendingSection = sec;
+      dateCol.classList.add('locked');   // colors disabled until a food is picked
+      modal.classList.add('open');
+    }
+
+    function closeModal() {
+      modal.classList.remove('open');
+      dateCol.classList.remove('locked');
+      pendingSection = null;
+      clearSelection();
+    }
+
+    // Once a food AND a color are chosen, create the bar in the day that opened the popup
+    function tryAdd() {
+      if (!selectedFood || !selectedDay || !pendingSection) return;
+      if (pendingSection.querySelectorAll('.food-item').length < MAX_ITEMS) {
+        pendingSection.querySelector('.food-list').appendChild(makeBar(selectedFood, selectedDay));
+        refreshAddButtons();
+        saveCooking();
+      }
+      closeModal();
+    }
+
+    foodCol.addEventListener('click', (e) => {
+      const opt = e.target.closest('.add-option');
+      if (!opt) return;
+      foodCol.querySelectorAll('.selected').forEach((b) => b.classList.remove('selected'));
+      opt.classList.add('selected');
+      selectedFood = opt.textContent;
+      dateCol.classList.remove('locked');   // now the user can pick a date
+    });
+
+    dateCol.addEventListener('click', (e) => {
+      const opt = e.target.closest('.date-option');
+      if (!opt) return;
+      dateCol.querySelectorAll('.selected').forEach((b) => b.classList.remove('selected'));
+      opt.classList.add('selected');
+      selectedDay = opt.dataset.day;
+      tryAdd();
+    });
+
+    // Tap the dim backdrop (outside the box) to dismiss
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // The × button also dismisses
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+
+    cooking.addEventListener('click', (e) => {
+      const del = e.target.closest('.food-del');
+      if (del) {
+        del.closest('.food-item').remove();
+        refreshAddButtons();
+        saveCooking();
+        return;
+      }
+
+      // Tapped "+ Add" -> open the picker for THIS day (food first, then color)
+      const add = e.target.closest('.add-item');
+      if (add) {
+        const sec = add.closest('.day-section');
+        if (sec.querySelectorAll('.food-item').length < MAX_ITEMS) openModal(sec);
+        return;
+      }
+
+      const heading = e.target.closest('.day-heading');
+      if (heading) {
+        heading.classList.toggle('done');
+        return;
+      }
+    });
+  </script>
+</body>
+</html>
