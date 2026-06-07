@@ -735,8 +735,7 @@
     const saved = localStorage.getItem(TAB_KEY);
     showView(document.getElementById(saved) ? saved : 'eating');
 
-    // ===== Cooking page: add / remove food bars (max 6 per day) =====
-    const MAX_ITEMS = 10;
+    // ===== Cooking page: add / remove food bars =====
     const FOODS = ['Chicken', 'Steak', 'Salmon', 'Eggs', 'Rice', 'Potato', 'Broccoli'];
     const MERGEABLE = new Set(['Chicken', 'Rice', 'Broccoli', 'Potato']);   // duplicates merge up to x2
     const cooking = document.getElementById('cooking');
@@ -810,7 +809,7 @@
       cooking.querySelectorAll('.day-section').forEach((sec) => {
         const count = sec.querySelectorAll('.food-item').length;
         const btn = sec.querySelector('.add-item');
-        if (btn) btn.style.display = count >= MAX_ITEMS ? 'none' : '';
+        if (btn) btn.style.display = '';
       });
     }
 
@@ -843,7 +842,7 @@
         if (!Array.isArray(items)) return;
         const list = sec.querySelector('.food-list');
         list.innerHTML = '';
-        items.slice(0, MAX_ITEMS).forEach((it) => list.appendChild(makeBar(it.name, it.day, it.count, it.completed)));
+        items.forEach((it) => list.appendChild(makeBar(it.name, it.day, it.count, it.completed)));
       });
     }
 
@@ -962,7 +961,7 @@
         }
       }
 
-      if (list.querySelectorAll('.food-item').length < MAX_ITEMS) {
+      {
         list.appendChild(makeBar(selectedFood, selectedDay));
         refreshAddButtons();
         saveCooking();
@@ -1009,7 +1008,7 @@
       const add = e.target.closest('.add-item');
       if (add) {
         const sec = add.closest('.day-section');
-        if (sec.querySelectorAll('.food-item').length < MAX_ITEMS) openModal(sec);
+        openModal(sec);
         return;
       }
 
