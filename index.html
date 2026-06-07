@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#1a1a1a" />
   <title>Meal Prep</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Meals" />
   <style>
     :root {
       /* ROYGBIV */
@@ -66,12 +72,79 @@
     .day-nav span[data-day="sat"] { background: var(--sat); }
     .day-nav span[data-day="sun"] { background: var(--sun); }
 
-    /* ===== Tab bar ===== */
+    /* ===== Top bar: hamburger + tabs ===== */
+    .topbar {
+      display: flex;
+    }
+
+    .hamburger {
+      flex-shrink: 0;
+      background: #1e1e1e;
+      color: #fff;
+      border: none;
+      border-bottom: 2px solid #2a2a2a;
+      font-size: 1.3rem;
+      padding: 0 1.1rem;
+      cursor: pointer;
+    }
+
+    .hamburger:active { background: #2a2a2a; }
+
     .tabs {
+      flex: 1;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       border-bottom: 2px solid #2a2a2a;
     }
+
+    /* Dropdown menu */
+    .menu {
+      position: absolute;
+      top: 54px;
+      left: 8px;
+      z-index: 60;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 4px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+    }
+
+    .menu[hidden] { display: none; }
+
+    .menu-item {
+      display: block;
+      width: 150px;
+      text-align: left;
+      padding: 11px 12px;
+      background: transparent;
+      border: none;
+      color: #e0e0e0;
+      font-family: inherit;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .menu-item:active { background: #2a2a2a; }
+
+    /* Log view */
+    .log-title {
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0.25rem 0 0.6rem;
+    }
+
+    .log-empty {
+      color: #777;
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+    }
+
+    /* History is read-only */
+    #log .add-item,
+    #log .food-del { display: none; }
 
     .tab {
       border: none;
@@ -244,6 +317,13 @@
     .food-item[data-day="sat"] .food-dot { background: var(--sat); }
     .food-item[data-day="sun"] .food-dot { background: var(--sun); }
 
+    /* Completed: crossed out with a gray dot */
+    .food-item.completed .food-dot { background: #666; }
+    .food-item.completed .food-name {
+      text-decoration: line-through;
+      color: #777;
+    }
+
     .food-name {
       flex: 1;
       min-width: 0;
@@ -408,9 +488,16 @@
     <span data-day="sun" aria-label="Sunday">S</span>
   </nav>
 
-  <div class="tabs">
-    <button type="button" class="tab" data-tab="cooking">Cooking</button>
-    <button type="button" class="tab active" data-tab="eating">Eating</button>
+  <div class="topbar">
+    <button type="button" class="hamburger" id="hamburger" aria-label="Menu">☰</button>
+    <div class="tabs">
+      <button type="button" class="tab" data-tab="cooking">Cooking</button>
+      <button type="button" class="tab active" data-tab="eating">Eating</button>
+    </div>
+  </div>
+
+  <div class="menu" id="menu" hidden>
+    <button type="button" class="menu-item" data-view="log">Log</button>
   </div>
 
   <main class="content">
@@ -576,6 +663,16 @@
       </div>
     </div>
     </section>
+
+    <section class="panel" id="log" aria-label="Log">
+      <div class="log-title">Cooking history</div>
+      <div class="cooking-days" id="logCookingDays"></div>
+      <p class="log-empty" id="logCookingEmpty">No cooking days have passed yet.</p>
+
+      <div class="log-title">Eating history</div>
+      <div class="calendar" id="logCalendar"></div>
+      <p class="log-empty" id="logEatingEmpty">No eating days have passed yet.</p>
+    </section>
   </main>
 
   <div class="modal-backdrop" id="foodModal">
@@ -602,34 +699,64 @@
     const panels = document.querySelectorAll('.panel');
     const TAB_KEY = 'meal-prep-active-tab';
 
-    function activateTab(name) {
-      tabs.forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+    function showView(name) {
       panels.forEach((p) => p.classList.toggle('active', p.id === name));
+      tabs.forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
       localStorage.setItem(TAB_KEY, name);
     }
 
     tabs.forEach((tab) => {
-      tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+      tab.addEventListener('click', () => showView(tab.dataset.tab));
     });
 
-    // Restore whichever tab you were on last (defaults to eating)
+    // Hamburger menu -> Log
+    const hamburger = document.getElementById('hamburger');
+    const menu = document.getElementById('menu');
+    hamburger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (menu.hidden) {
+        const r = hamburger.getBoundingClientRect();
+        menu.style.top = (r.bottom + window.scrollY + 2) + 'px';
+        menu.style.left = (r.left + window.scrollX) + 'px';
+      }
+      menu.hidden = !menu.hidden;
+    });
+    menu.addEventListener('click', (e) => {
+      const item = e.target.closest('.menu-item');
+      if (!item) return;
+      showView(item.dataset.view);
+      menu.hidden = true;
+    });
+    document.addEventListener('click', (e) => {
+      if (!menu.hidden && !menu.contains(e.target) && e.target !== hamburger) menu.hidden = true;
+    });
+
+    // Restore whichever view you were on last (defaults to eating)
     const saved = localStorage.getItem(TAB_KEY);
-    activateTab(document.getElementById(saved) ? saved : 'eating');
+    showView(document.getElementById(saved) ? saved : 'eating');
 
     // ===== Cooking page: add / remove food bars (max 6 per day) =====
     const MAX_ITEMS = 10;
     const FOODS = ['Chicken', 'Steak', 'Salmon', 'Eggs', 'Rice', 'Potato', 'Broccoli'];
+    const MERGEABLE = new Set(['Chicken', 'Rice', 'Broccoli', 'Potato']);   // duplicates merge up to x2
     const cooking = document.getElementById('cooking');
 
-    function makeBar(name, dayKey) {
+    function labelFor(name, count) {
+      return count > 1 ? name + ' x' + count : name;
+    }
+
+    function makeBar(name, dayKey, count, completed) {
+      count = count || 1;
       const li = document.createElement('li');
-      li.className = 'food-item';
+      li.className = 'food-item' + (completed ? ' completed' : '');
       if (dayKey) li.dataset.day = dayKey;
+      li.dataset.food = name;
+      li.dataset.count = count;
       li.innerHTML =
         '<span class="food-dot"></span>' +
         '<span class="food-name"></span>' +
         '<button type="button" class="food-del" aria-label="Remove">×</button>';
-      li.querySelector('.food-name').textContent = name;
+      li.querySelector('.food-name').textContent = labelFor(name, count);
       return li;
     }
 
@@ -696,10 +823,12 @@
 
     function saveCooking() {
       const data = {};
-      cooking.querySelectorAll('.day-section').forEach((sec) => {
+      document.querySelectorAll('.day-section').forEach((sec) => {
         data[dayId(sec)] = Array.from(sec.querySelectorAll('.food-item')).map((li) => ({
-          name: li.querySelector('.food-name').textContent,
-          day: li.dataset.day || null
+          name: li.dataset.food,
+          day: li.dataset.day || null,
+          count: Number(li.dataset.count || 1),
+          completed: li.classList.contains('completed')
         }));
       });
       localStorage.setItem(STORE_KEY, JSON.stringify(data));
@@ -709,17 +838,69 @@
       let data;
       try { data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) {}
       if (!data) return;
-      cooking.querySelectorAll('.day-section').forEach((sec) => {
+      document.querySelectorAll('.day-section').forEach((sec) => {
         const items = data[dayId(sec)];
         if (!Array.isArray(items)) return;
         const list = sec.querySelector('.food-list');
         list.innerHTML = '';
-        items.slice(0, MAX_ITEMS).forEach((it) => list.appendChild(makeBar(it.name, it.day)));
+        items.slice(0, MAX_ITEMS).forEach((it) => list.appendChild(makeBar(it.name, it.day, it.count, it.completed)));
       });
     }
 
     loadCooking();
     refreshAddButtons();
+
+    // ----- 7 PM Eastern archiving: days move to the Log after their cutoff -----
+    const logCookingDays = document.getElementById('logCookingDays');
+    const logCalendar = document.getElementById('logCalendar');
+    const logCookingEmpty = document.getElementById('logCookingEmpty');
+    const logEatingEmpty = document.getElementById('logEatingEmpty');
+
+    // Tag each day with its real date (all are June 2026)
+    function isoFromText(txt) {
+      const m = txt.match(/(\d+)/);
+      return m ? '2026-06-' + String(m[1]).padStart(2, '0') : null;
+    }
+    cooking.querySelectorAll('.day-section').forEach((sec) => {
+      const iso = isoFromText(sec.querySelector('.day-heading').textContent);
+      if (iso) sec.dataset.date = iso;
+    });
+    document.querySelectorAll('#eating .cal-cell').forEach((cell) => {
+      const iso = isoFromText(cell.querySelector('.cal-date').textContent);
+      if (iso) cell.dataset.date = iso;
+    });
+
+    // Current date + hour in US Eastern time (handles EST/EDT automatically)
+    function easternNow() {
+      const p = {};
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', hour12: false
+      }).formatToParts(new Date()).forEach((part) => { p[part.type] = part.value; });
+      return { date: p.year + '-' + p.month + '-' + p.day, hour: Number(p.hour) % 24 };
+    }
+
+    // A day is done once it's past 7 PM (19:00) Eastern on its date
+    function isPastCutoff(dateStr, now) {
+      if (now.date > dateStr) return true;
+      return now.date === dateStr && now.hour >= 19;
+    }
+
+    function archiveDueDays() {
+      const now = easternNow();
+      cooking.querySelectorAll('.day-section').forEach((sec) => {
+        if (sec.dataset.date && isPastCutoff(sec.dataset.date, now)) logCookingDays.appendChild(sec);
+      });
+      document.querySelectorAll('#eating .cal-cell').forEach((cell) => {
+        if (cell.dataset.date && isPastCutoff(cell.dataset.date, now)) logCalendar.appendChild(cell);
+      });
+      logCookingEmpty.hidden = logCookingDays.children.length > 0;
+      logEatingEmpty.hidden = logCalendar.children.length > 0;
+    }
+
+    archiveDueDays();
+    setInterval(archiveDueDays, 60000);   // re-check every minute so it happens live at 7 PM
 
     // ----- Food + date picker popup -----
     const modal = document.getElementById('foodModal');
@@ -762,8 +943,27 @@
     // Once a food AND a color are chosen, create the bar in the day that opened the popup
     function tryAdd() {
       if (!selectedFood || !selectedDay || !pendingSection) return;
-      if (pendingSection.querySelectorAll('.food-item').length < MAX_ITEMS) {
-        pendingSection.querySelector('.food-list').appendChild(makeBar(selectedFood, selectedDay));
+      const list = pendingSection.querySelector('.food-list');
+
+      // For mergeable foods, fold a duplicate into an existing block of the
+      // same food AND same color/day (capped at x2)
+      if (MERGEABLE.has(selectedFood)) {
+        const target = Array.from(list.querySelectorAll('.food-item')).find(
+          (li) => li.dataset.food === selectedFood &&
+                  li.dataset.day === selectedDay &&
+                  Number(li.dataset.count || 1) < 2
+        );
+        if (target) {
+          target.dataset.count = 2;
+          target.querySelector('.food-name').textContent = labelFor(selectedFood, 2);
+          saveCooking();
+          closeModal();
+          return;
+        }
+      }
+
+      if (list.querySelectorAll('.food-item').length < MAX_ITEMS) {
+        list.appendChild(makeBar(selectedFood, selectedDay));
         refreshAddButtons();
         saveCooking();
       }
@@ -817,6 +1017,13 @@
       if (heading) {
         heading.classList.toggle('done');
         return;
+      }
+
+      // Tap a food bar -> mark it completed (crossed out, gray dot)
+      const item = e.target.closest('.food-item');
+      if (item) {
+        item.classList.toggle('completed');
+        saveCooking();
       }
     });
   </script>
