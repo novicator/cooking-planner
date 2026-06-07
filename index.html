@@ -475,6 +475,66 @@
       opacity: 0.3;
       pointer-events: none;
     }
+
+    /* ===== Food groups (Monday June 8th onward) ===== */
+    .food-group {
+      border: 2px solid #fff;
+      border-radius: 10px;
+      padding: 8px;
+      padding-top: 10px;
+      margin-bottom: 8px;
+      list-style: none;
+      position: relative;
+      max-width: 160px;
+    }
+
+    .group-items {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .food-group .food-item {
+      max-width: none;
+    }
+
+    .food-group .food-item:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .group-del {
+      position: absolute;
+      top: 2px;
+      right: 6px;
+      background: transparent;
+      border: none;
+      color: #666;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 0 2px;
+      cursor: pointer;
+    }
+
+    .group-del:active { color: #ef4444; }
+
+    .add-to-group {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 5px;
+      background: transparent;
+      border: 1px dashed #444;
+      border-radius: 8px;
+      color: #888;
+      font-family: inherit;
+      font-size: 0.8rem;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .add-to-group:active { background: #1e1e1e; }
   </style>
 </head>
 <body>
@@ -759,6 +819,31 @@
       return li;
     }
 
+    function isGroupMode(sec) {
+      const m = sec.querySelector('.day-heading').textContent.match(/(\d+)/);
+      return m && Number(m[1]) >= 8;
+    }
+
+    function makeGroup() {
+      const li = document.createElement('li');
+      li.className = 'food-group';
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'group-del';
+      delBtn.setAttribute('aria-label', 'Remove group');
+      delBtn.textContent = '×';
+      const groupList = document.createElement('ul');
+      groupList.className = 'group-items';
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'add-to-group';
+      addBtn.textContent = '+ Add';
+      li.appendChild(delBtn);
+      li.appendChild(groupList);
+      li.appendChild(addBtn);
+      return li;
+    }
+
     const DAY_KEYS = {
       Monday: 'mon', Tuesday: 'tue', Wednesday: 'wed', Thursday: 'thu',
       Friday: 'fri', Saturday: 'sat', Sunday: 'sun'
@@ -796,12 +881,12 @@
       h.insertBefore(dot, h.firstChild);
     });
 
-    // Add an "+ Add" button to every day
+    // Add an "+ Add" or "+ New Group" button to every day
     cooking.querySelectorAll('.day-section').forEach((sec) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'add-item';
-      btn.textContent = '+ Add';
+      btn.textContent = isGroupMode(sec) ? '+ New Group' : '+ Add';
       sec.querySelector('.food-list').after(btn);
     });
 
@@ -823,12 +908,30 @@
     function saveCooking() {
       const data = {};
       document.querySelectorAll('.day-section').forEach((sec) => {
-        data[dayId(sec)] = Array.from(sec.querySelectorAll('.food-item')).map((li) => ({
-          name: li.dataset.food,
-          day: li.dataset.day || null,
-          count: Number(li.dataset.count || 1),
-          completed: li.classList.contains('completed')
-        }));
+        const id = dayId(sec);
+        if (isGroupMode(sec)) {
+          data[id] = Array.from(sec.querySelector('.food-list').children).map((child) => {
+            if (child.classList.contains('food-group')) {
+              return {
+                type: 'group',
+                items: Array.from(child.querySelectorAll('.food-item')).map((li) => ({
+                  name: li.dataset.food,
+                  day: li.dataset.day || null,
+                  count: Number(li.dataset.count || 1),
+                  completed: li.classList.contains('completed')
+                }))
+              };
+            }
+            return { name: child.dataset.food, day: child.dataset.day || null, count: Number(child.dataset.count || 1), completed: child.classList.contains('completed') };
+          });
+        } else {
+          data[id] = Array.from(sec.querySelectorAll('.food-item')).map((li) => ({
+            name: li.dataset.food,
+            day: li.dataset.day || null,
+            count: Number(li.dataset.count || 1),
+            completed: li.classList.contains('completed')
+          }));
+        }
       });
       localStorage.setItem(STORE_KEY, JSON.stringify(data));
     }
@@ -838,11 +941,21 @@
       try { data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) {}
       if (!data) return;
       document.querySelectorAll('.day-section').forEach((sec) => {
-        const items = data[dayId(sec)];
-        if (!Array.isArray(items)) return;
+        const entries = data[dayId(sec)];
+        if (!Array.isArray(entries)) return;
         const list = sec.querySelector('.food-list');
         list.innerHTML = '';
-        items.forEach((it) => list.appendChild(makeBar(it.name, it.day, it.count, it.completed)));
+        if (isGroupMode(sec)) {
+          entries.forEach((entry) => {
+            if (entry.type === 'group') {
+              const group = makeGroup();
+              entry.items.forEach((it) => group.querySelector('.group-items').appendChild(makeBar(it.name, it.day, it.count, it.completed)));
+              list.appendChild(group);
+            }
+          });
+        } else {
+          entries.forEach((it) => list.appendChild(makeBar(it.name, it.day, it.count, it.completed)));
+        }
       });
     }
 
@@ -908,7 +1021,8 @@
 
     let selectedFood = null;
     let selectedDay = null;   // only picks the dot color
-    let pendingSection = null;   // the day whose "+ Add" was tapped
+    let pendingSection = null;   // the day whose button was tapped
+    let pendingGroup = null;     // the group being added to (null for non-group days)
 
     // Build the food option buttons once
     FOODS.forEach((food) => {
@@ -925,9 +1039,10 @@
       modal.querySelectorAll('.selected').forEach((b) => b.classList.remove('selected'));
     }
 
-    function openModal(sec) {
+    function openModal(sec, group) {
       clearSelection();
       pendingSection = sec;
+      pendingGroup = group || null;
       dateCol.classList.add('locked');   // colors disabled until a food is picked
       modal.classList.add('open');
     }
@@ -936,13 +1051,16 @@
       modal.classList.remove('open');
       dateCol.classList.remove('locked');
       pendingSection = null;
+      pendingGroup = null;
       clearSelection();
     }
 
-    // Once a food AND a color are chosen, create the bar in the day that opened the popup
+    // Once a food AND a color are chosen, create the bar in the group or day that opened the popup
     function tryAdd() {
       if (!selectedFood || !selectedDay || !pendingSection) return;
-      const list = pendingSection.querySelector('.food-list');
+      const list = pendingGroup
+        ? pendingGroup.querySelector('.group-items')
+        : pendingSection.querySelector('.food-list');
 
       // For mergeable foods, fold a duplicate into an existing block of the
       // same food AND same color/day (capped at x2)
@@ -961,11 +1079,9 @@
         }
       }
 
-      {
-        list.appendChild(makeBar(selectedFood, selectedDay));
-        refreshAddButtons();
-        saveCooking();
-      }
+      list.appendChild(makeBar(selectedFood, selectedDay));
+      refreshAddButtons();
+      saveCooking();
       closeModal();
     }
 
@@ -998,17 +1114,45 @@
     cooking.addEventListener('click', (e) => {
       const del = e.target.closest('.food-del');
       if (del) {
-        del.closest('.food-item').remove();
+        const item = del.closest('.food-item');
+        if (Number(item.dataset.count || 1) > 1) {
+          item.dataset.count = 1;
+          item.querySelector('.food-name').textContent = item.dataset.food;
+        } else {
+          item.remove();
+        }
         refreshAddButtons();
         saveCooking();
         return;
       }
 
-      // Tapped "+ Add" -> open the picker for THIS day (food first, then color)
+      const groupDel = e.target.closest('.group-del');
+      if (groupDel) {
+        groupDel.closest('.food-group').remove();
+        saveCooking();
+        return;
+      }
+
+      const addToGroup = e.target.closest('.add-to-group');
+      if (addToGroup) {
+        const group = addToGroup.closest('.food-group');
+        const sec = group.closest('.day-section');
+        openModal(sec, group);
+        return;
+      }
+
+      // "+ Add" (old days) or "+ New Group" (June 8+)
       const add = e.target.closest('.add-item');
       if (add) {
         const sec = add.closest('.day-section');
-        openModal(sec);
+        if (isGroupMode(sec)) {
+          const group = makeGroup();
+          sec.querySelector('.food-list').appendChild(group);
+          saveCooking();
+          openModal(sec, group);
+        } else {
+          openModal(sec);
+        }
         return;
       }
 
