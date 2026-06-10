@@ -1111,6 +1111,14 @@
     // The × button also dismisses
     document.getElementById('modalClose').addEventListener('click', closeModal);
 
+    logCookingDays.addEventListener('click', (e) => {
+      const item = e.target.closest('.food-item');
+      if (item) {
+        item.classList.toggle('completed');
+        saveCooking();
+      }
+    });
+
     cooking.addEventListener('click', (e) => {
       const del = e.target.closest('.food-del');
       if (del) {
