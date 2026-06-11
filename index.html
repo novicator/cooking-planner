@@ -93,7 +93,7 @@
     .tabs {
       flex: 1;
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       border-bottom: 2px solid #2a2a2a;
     }
 
@@ -535,6 +535,85 @@
     }
 
     .add-to-group:active { background: #1e1e1e; }
+
+    /* ===== Daily checklist ===== */
+    .daily-list {
+      padding: 0.25rem 0;
+    }
+
+    .daily-section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      padding: 1rem 4px 0.4rem;
+    }
+
+    .daily-section-label:first-child {
+      padding-top: 0.25rem;
+    }
+
+    .check-list {
+      list-style: none;
+      margin: 0 0 0.25rem;
+      padding: 0;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 14px;
+      margin-bottom: 6px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      color: #e0e0e0;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, transform 0.08s;
+    }
+
+    .check-item:active {
+      background: #2a2a2a;
+      transform: scale(0.98);
+    }
+
+    .check-box {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 2px solid #444;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      color: #000;
+      font-weight: 700;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .check-item.checked .check-box {
+      background: #22c55e;
+      border-color: #22c55e;
+    }
+
+    .check-item.checked .check-box::after {
+      content: '✓';
+    }
+
+    .check-item.checked .check-label {
+      text-decoration: line-through;
+      color: #555;
+    }
+
+    .check-label {
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -551,6 +630,7 @@
   <div class="topbar">
     <button type="button" class="hamburger" id="hamburger" aria-label="Menu">☰</button>
     <div class="tabs">
+      <button type="button" class="tab" data-tab="daily">✓</button>
       <button type="button" class="tab" data-tab="cooking">Cooking</button>
       <button type="button" class="tab active" data-tab="eating">Eating</button>
     </div>
@@ -561,6 +641,24 @@
   </div>
 
   <main class="content">
+    <section class="panel" id="daily" aria-label="Daily checklist">
+      <div class="daily-list">
+        <div class="daily-section-label">Meal 1</div>
+        <ul class="check-list">
+          <li class="check-item" data-id="avocado"><span class="check-box"></span><span class="check-label">Avocado</span></li>
+          <li class="check-item" data-id="ginger"><span class="check-box"></span><span class="check-label">Ginger</span></li>
+          <li class="check-item" data-id="almonds"><span class="check-box"></span><span class="check-label">Almonds</span></li>
+          <li class="check-item" data-id="apple"><span class="check-box"></span><span class="check-label">Apple</span></li>
+          <li class="check-item" data-id="pickles"><span class="check-box"></span><span class="check-label">Pickles</span></li>
+        </ul>
+        <ul class="check-list">
+          <li class="check-item" data-id="meal2"><span class="check-box"></span><span class="check-label">Meal 2</span></li>
+          <li class="check-item" data-id="meal3"><span class="check-box"></span><span class="check-label">Meal 3</span></li>
+          <li class="check-item" data-id="milk"><span class="check-box"></span><span class="check-label">Milk</span></li>
+        </ul>
+      </div>
+    </section>
+
     <section class="panel" id="cooking" aria-label="Cooking">
       <div class="cooking-days">
         <div class="day-section">
@@ -1110,6 +1208,55 @@
 
     // The × button also dismisses
     document.getElementById('modalClose').addEventListener('click', closeModal);
+
+    // ===== Daily checklist =====
+    const DAILY_KEY = 'meal-prep-daily-v1';
+
+    function easternDateStr() {
+      const parts = {};
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date()).forEach((p) => { parts[p.type] = p.value; });
+      return parts.year + '-' + parts.month + '-' + parts.day;
+    }
+
+    function loadDaily() {
+      const today = easternDateStr();
+      let stored = {};
+      try { stored = JSON.parse(localStorage.getItem(DAILY_KEY) || '{}'); } catch (e) {}
+      const checked = stored.date === today ? new Set(stored.checked || []) : new Set();
+      document.querySelectorAll('#daily .check-item').forEach((item) => {
+        item.classList.toggle('checked', checked.has(item.dataset.id));
+      });
+    }
+
+    function saveDaily() {
+      const today = easternDateStr();
+      const checked = Array.from(document.querySelectorAll('#daily .check-item.checked')).map((i) => i.dataset.id);
+      localStorage.setItem(DAILY_KEY, JSON.stringify({ date: today, checked }));
+    }
+
+    function scheduleNextMidnight() {
+      const now = new Date();
+      const nyMidnight = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      nyMidnight.setHours(24, 0, 0, 0);
+      const msUntilMidnight = nyMidnight - new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      setTimeout(() => {
+        loadDaily();
+        scheduleNextMidnight();
+      }, msUntilMidnight + 500);
+    }
+
+    loadDaily();
+    scheduleNextMidnight();
+
+    document.getElementById('daily').addEventListener('click', (e) => {
+      const item = e.target.closest('.check-item');
+      if (!item) return;
+      item.classList.toggle('checked');
+      saveDaily();
+    });
 
     logCookingDays.addEventListener('click', (e) => {
       const item = e.target.closest('.food-item');
