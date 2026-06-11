@@ -541,17 +541,11 @@
       padding: 0.25rem 0;
     }
 
-    .daily-section-label {
-      font-size: 0.7rem;
+    .daily-date {
+      font-size: 1.4rem;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #888;
-      padding: 1rem 4px 0.4rem;
-    }
-
-    .daily-section-label:first-child {
-      padding-top: 0.25rem;
+      color: #fff;
+      padding: 0.5rem 4px 1rem;
     }
 
     .check-list {
@@ -643,18 +637,16 @@
   <main class="content">
     <section class="panel" id="daily" aria-label="Daily checklist">
       <div class="daily-list">
-        <div class="daily-section-label">Meal 1</div>
+        <div class="daily-date" id="dailyDate"></div>
         <ul class="check-list">
+          <li class="check-item" data-id="meal1"><span class="check-box"></span><span class="check-label">Meal 1</span></li>
+          <li class="check-item" data-id="apple"><span class="check-box"></span><span class="check-label">Apple</span></li>
+          <li class="check-item" data-id="pickles"><span class="check-box"></span><span class="check-label">Pickles</span></li>
           <li class="check-item" data-id="avocado"><span class="check-box"></span><span class="check-label">Avocado</span></li>
           <li class="check-item" data-id="ginger"><span class="check-box"></span><span class="check-label">Ginger</span></li>
           <li class="check-item" data-id="almonds"><span class="check-box"></span><span class="check-label">Almonds</span></li>
-          <li class="check-item" data-id="apple"><span class="check-box"></span><span class="check-label">Apple</span></li>
-          <li class="check-item" data-id="pickles"><span class="check-box"></span><span class="check-label">Pickles</span></li>
-        </ul>
-        <ul class="check-list">
           <li class="check-item" data-id="meal2"><span class="check-box"></span><span class="check-label">Meal 2</span></li>
           <li class="check-item" data-id="meal3"><span class="check-box"></span><span class="check-label">Meal 3</span></li>
-          <li class="check-item" data-id="milk"><span class="check-box"></span><span class="check-label">Milk</span></li>
         </ul>
       </div>
     </section>
@@ -1221,8 +1213,16 @@
       return parts.year + '-' + parts.month + '-' + parts.day;
     }
 
+    function formatDailyDate(iso) {
+      const [y, m, d] = iso.split('-').map(Number);
+      const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const suf = (n) => { const v = n % 100; return n + (['th','st','nd','rd'][(v-20)%10] || ['th','st','nd','rd'][v] || 'th'); };
+      return MONTHS[m - 1] + ' ' + suf(d) + ', ' + y;
+    }
+
     function loadDaily() {
       const today = easternDateStr();
+      document.getElementById('dailyDate').textContent = formatDailyDate(today);
       let stored = {};
       try { stored = JSON.parse(localStorage.getItem(DAILY_KEY) || '{}'); } catch (e) {}
       const checked = stored.date === today ? new Set(stored.checked || []) : new Set();
@@ -1238,14 +1238,13 @@
     }
 
     function scheduleNextMidnight() {
-      const now = new Date();
-      const nyMidnight = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const nyNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const nyMidnight = new Date(nyNow);
       nyMidnight.setHours(24, 0, 0, 0);
-      const msUntilMidnight = nyMidnight - new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
       setTimeout(() => {
         loadDaily();
         scheduleNextMidnight();
-      }, msUntilMidnight + 500);
+      }, nyMidnight - nyNow + 500);
     }
 
     loadDaily();
