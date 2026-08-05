@@ -75,6 +75,9 @@
     /* ===== Top bar: hamburger + tabs ===== */
     .topbar {
       display: flex;
+      position: sticky;
+      top: var(--day-nav-height, 54px);
+      z-index: 9;
     }
 
     .hamburger {
@@ -678,6 +681,7 @@
         <div class="daily-date" id="dailyDate"></div>
         <ul class="check-list">
           <li class="check-item" data-id="meal1"><span class="check-box"></span><span class="check-label">Oats + Bananas</span></li>
+          <li class="check-item" data-id="spinach-eggs"><span class="check-box"></span><span class="check-label">Spinach + Eggs</span></li>
           <li class="check-item" data-id="apple"><span class="check-box"></span><span class="check-label">Apple</span></li>
           <li class="check-item" data-id="pickles"><span class="check-box"></span><span class="check-label">Pickles</span></li>
           <li class="check-item" data-id="avocado"><span class="check-box"></span><span class="check-label">Avocado</span></li>
@@ -2392,6 +2396,17 @@
   </div>
 
   <script>
+    // Keep the tab bar glued directly beneath the sticky day-nav strip,
+    // whatever its actual rendered height turns out to be.
+    function syncStickyOffsets() {
+      const dayNav = document.querySelector('.day-nav');
+      if (dayNav) {
+        document.documentElement.style.setProperty('--day-nav-height', dayNav.getBoundingClientRect().height + 'px');
+      }
+    }
+    syncStickyOffsets();
+    window.addEventListener('resize', syncStickyOffsets);
+
     const tabs = document.querySelectorAll('.tab');
     const panels = document.querySelectorAll('.panel');
     const TAB_KEY = 'meal-prep-active-tab';
@@ -2610,7 +2625,8 @@
       const pairStart = idx - (idx % 2);   // pairs are (0,1) (2,3) (4,5)... to match the 2-column grid
       const target = sections[pairStart];
       const dayNav = document.querySelector('.day-nav');
-      const offset = dayNav ? dayNav.getBoundingClientRect().height : 0;
+      const topbar = document.querySelector('.topbar');
+      const offset = (dayNav ? dayNav.getBoundingClientRect().height : 0) + (topbar ? topbar.getBoundingClientRect().height : 0);
       const top = target.getBoundingClientRect().top + window.scrollY - offset;
       window.scrollTo({ top: Math.max(top, 0), behavior: 'auto' });
     }
