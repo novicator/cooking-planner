@@ -615,6 +615,37 @@
     .check-label {
       flex: 1;
     }
+
+    .water-item {
+      cursor: default;
+    }
+
+    .water-item:active {
+      background: #1e1e1e;
+      transform: none;
+    }
+
+    .water-input {
+      width: 64px;
+      background: #121212;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 0.95rem;
+      padding: 6px 8px;
+      text-align: right;
+      -moz-appearance: textfield;
+    }
+
+    .water-input:focus {
+      outline: none;
+      border-color: #22c55e;
+    }
+
+    .water-unit {
+      color: #888;
+      font-size: 0.85rem;
+    }
   </style>
 </head>
 <body>
@@ -646,7 +677,7 @@
       <div class="daily-list">
         <div class="daily-date" id="dailyDate"></div>
         <ul class="check-list">
-          <li class="check-item" data-id="meal1"><span class="check-box"></span><span class="check-label">Meal 1</span></li>
+          <li class="check-item" data-id="meal1"><span class="check-box"></span><span class="check-label">Oats + Bananas</span></li>
           <li class="check-item" data-id="apple"><span class="check-box"></span><span class="check-label">Apple</span></li>
           <li class="check-item" data-id="pickles"><span class="check-box"></span><span class="check-label">Pickles</span></li>
           <li class="check-item" data-id="avocado"><span class="check-box"></span><span class="check-label">Avocado</span></li>
@@ -654,6 +685,11 @@
           <li class="check-item" data-id="almonds"><span class="check-box"></span><span class="check-label">Almonds</span></li>
           <li class="check-item" data-id="meal2"><span class="check-box"></span><span class="check-label">Meal 2</span></li>
           <li class="check-item" data-id="meal3"><span class="check-box"></span><span class="check-label">Meal 3</span></li>
+          <li class="check-item water-item" data-id="water">
+            <span class="check-label">Water</span>
+            <input type="number" inputmode="numeric" class="water-input" id="waterInput" placeholder="0" min="0" />
+            <span class="water-unit">oz</span>
+          </li>
         </ul>
       </div>
     </section>
@@ -1371,16 +1407,21 @@
       document.getElementById('dailyDate').textContent = formatDailyDate(today);
       let stored = {};
       try { stored = JSON.parse(localStorage.getItem(DAILY_KEY) || '{}'); } catch (e) {}
-      const checked = stored.date === today ? new Set(stored.checked || []) : new Set();
+      const sameDay = stored.date === today;
+      const checked = sameDay ? new Set(stored.checked || []) : new Set();
       document.querySelectorAll('#daily .check-item').forEach((item) => {
         item.classList.toggle('checked', checked.has(item.dataset.id));
       });
+      const waterInput = document.getElementById('waterInput');
+      if (waterInput) waterInput.value = sameDay && stored.water ? stored.water : '';
     }
 
     function saveDaily() {
       const today = easternDateStr();
       const checked = Array.from(document.querySelectorAll('#daily .check-item.checked')).map((i) => i.dataset.id);
-      localStorage.setItem(DAILY_KEY, JSON.stringify({ date: today, checked }));
+      const waterInput = document.getElementById('waterInput');
+      const water = waterInput ? waterInput.value : '';
+      localStorage.setItem(DAILY_KEY, JSON.stringify({ date: today, checked, water }));
     }
 
     function scheduleNextMidnight() {
@@ -1397,11 +1438,14 @@
     scheduleNextMidnight();
 
     document.getElementById('daily').addEventListener('click', (e) => {
+      if (e.target.closest('.water-input')) return;
       const item = e.target.closest('.check-item');
       if (!item) return;
       item.classList.toggle('checked');
       saveDaily();
     });
+
+    document.getElementById('waterInput').addEventListener('input', saveDaily);
 
     logCookingDays.addEventListener('click', (e) => {
       const item = e.target.closest('.food-item');
