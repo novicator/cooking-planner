@@ -38,9 +38,16 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: #121212;
       color: #e0e0e0;
-      display: flex;
-      flex-direction: column;
       min-height: 100vh;
+    }
+
+    /* A plain (non-flex) sticky wrapper — iOS Safari has a long-standing bug
+       where position:sticky doesn't stick on direct flex children, so the
+       header lives outside body's layout instead of being a flex item. */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     /* ===== Top nav: 7 equal parts ===== */
@@ -48,9 +55,6 @@
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       width: 100%;
-      position: sticky;
-      top: 0;
-      z-index: 10;
     }
 
     .day-nav span {
@@ -75,9 +79,6 @@
     /* ===== Top bar: hamburger + tabs ===== */
     .topbar {
       display: flex;
-      position: sticky;
-      top: var(--day-nav-height, 54px);
-      z-index: 9;
     }
 
     .hamburger {
@@ -184,7 +185,6 @@
 
     /* ===== Content area ===== */
     .content {
-      flex: 1;
       padding: 1rem;
     }
 
@@ -652,24 +652,26 @@
   </style>
 </head>
 <body>
-  <nav class="day-nav" aria-label="Days of the week">
-    <span data-day="mon" aria-label="Monday">M</span>
-    <span data-day="tue" aria-label="Tuesday">T</span>
-    <span data-day="wed" aria-label="Wednesday">W</span>
-    <span data-day="thu" aria-label="Thursday">T</span>
-    <span data-day="fri" aria-label="Friday">F</span>
-    <span data-day="sat" aria-label="Saturday">S</span>
-    <span data-day="sun" aria-label="Sunday">S</span>
-  </nav>
+  <header class="app-header">
+    <nav class="day-nav" aria-label="Days of the week">
+      <span data-day="mon" aria-label="Monday">M</span>
+      <span data-day="tue" aria-label="Tuesday">T</span>
+      <span data-day="wed" aria-label="Wednesday">W</span>
+      <span data-day="thu" aria-label="Thursday">T</span>
+      <span data-day="fri" aria-label="Friday">F</span>
+      <span data-day="sat" aria-label="Saturday">S</span>
+      <span data-day="sun" aria-label="Sunday">S</span>
+    </nav>
 
-  <div class="topbar">
-    <button type="button" class="hamburger" id="hamburger" aria-label="Menu">☰</button>
-    <div class="tabs">
-      <button type="button" class="tab" data-tab="daily">✓</button>
-      <button type="button" class="tab" data-tab="cooking">Cooking</button>
-      <button type="button" class="tab active" data-tab="eating">Eating</button>
+    <div class="topbar">
+      <button type="button" class="hamburger" id="hamburger" aria-label="Menu">☰</button>
+      <div class="tabs">
+        <button type="button" class="tab" data-tab="daily">✓</button>
+        <button type="button" class="tab" data-tab="cooking">Cooking</button>
+        <button type="button" class="tab active" data-tab="eating">Eating</button>
+      </div>
     </div>
-  </div>
+  </header>
 
   <div class="menu" id="menu" hidden>
     <button type="button" class="menu-item" data-view="log">Log</button>
@@ -2396,17 +2398,6 @@
   </div>
 
   <script>
-    // Keep the tab bar glued directly beneath the sticky day-nav strip,
-    // whatever its actual rendered height turns out to be.
-    function syncStickyOffsets() {
-      const dayNav = document.querySelector('.day-nav');
-      if (dayNav) {
-        document.documentElement.style.setProperty('--day-nav-height', dayNav.getBoundingClientRect().height + 'px');
-      }
-    }
-    syncStickyOffsets();
-    window.addEventListener('resize', syncStickyOffsets);
-
     const tabs = document.querySelectorAll('.tab');
     const panels = document.querySelectorAll('.panel');
     const TAB_KEY = 'meal-prep-active-tab';
@@ -2624,9 +2615,8 @@
       if (idx === -1) return;
       const pairStart = idx - (idx % 2);   // pairs are (0,1) (2,3) (4,5)... to match the 2-column grid
       const target = sections[pairStart];
-      const dayNav = document.querySelector('.day-nav');
-      const topbar = document.querySelector('.topbar');
-      const offset = (dayNav ? dayNav.getBoundingClientRect().height : 0) + (topbar ? topbar.getBoundingClientRect().height : 0);
+      const header = document.querySelector('.app-header');
+      const offset = header ? header.getBoundingClientRect().height : 0;
       const top = target.getBoundingClientRect().top + window.scrollY - offset;
       window.scrollTo({ top: Math.max(top, 0), behavior: 'auto' });
     }
