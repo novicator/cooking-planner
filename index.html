@@ -623,6 +623,14 @@
       flex: 1;
     }
 
+    .check-item.day-only {
+      display: none;
+    }
+
+    .check-item.day-only.show {
+      display: flex;
+    }
+
     .water-item {
       cursor: default;
     }
@@ -686,6 +694,8 @@
       <div class="daily-list">
         <div class="daily-date" id="dailyDate"></div>
         <ul class="check-list">
+          <li class="check-item day-only" data-id="thaw-salmon" data-days="wed"><span class="check-box"></span><span class="check-label">Thaw Salmon</span></li>
+          <li class="check-item day-only" data-id="thaw-salmon-steak" data-days="sat"><span class="check-box"></span><span class="check-label">Thaw Salmon and Steak</span></li>
           <li class="check-item" data-id="meal1"><span class="check-box"></span><span class="check-label">Oats + Bananas</span></li>
           <li class="check-item" data-id="spinach-eggs"><span class="check-box"></span><span class="check-label">Spinach + Eggs</span></li>
           <li class="check-item" data-id="apple"><span class="check-box"></span><span class="check-label">Apple</span></li>
@@ -2806,6 +2816,12 @@
       return parts.year + '-' + parts.month + '-' + parts.day;
     }
 
+    function weekdayAbbr(iso) {
+      const [y, m, d] = iso.split('-').map(Number);
+      const ABBR = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      return ABBR[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+    }
+
     function formatDailyDate(iso) {
       const [y, m, d] = iso.split('-').map(Number);
       const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -2820,8 +2836,13 @@
       try { stored = JSON.parse(localStorage.getItem(DAILY_KEY) || '{}'); } catch (e) {}
       const sameDay = stored.date === today;
       const checked = sameDay ? new Set(stored.checked || []) : new Set();
+      const todayAbbr = weekdayAbbr(today);
       document.querySelectorAll('#daily .check-item').forEach((item) => {
         item.classList.toggle('checked', checked.has(item.dataset.id));
+        if (item.classList.contains('day-only')) {
+          const days = (item.dataset.days || '').split(',');
+          item.classList.toggle('show', days.includes(todayAbbr));
+        }
       });
       const waterInput = document.getElementById('waterInput');
       if (waterInput) waterInput.value = sameDay && stored.water ? stored.water : '';
